@@ -1,0 +1,158 @@
+{
+  "2025-06-17": {
+    "Salı": {
+      "Dumbbell Omuz Aleti": [
+        {"agirlik": 36, "tekrar": 10},
+        {"agirlik": 50, "tekrar": 10},
+        {"agirlik": 59, "tekrar": 5}
+      ],
+      "Overhead Barbell Press": [
+        {"agirlik": 20, "tekrar": 10},
+        {"agirlik": 30, "tekrar": 8},
+        {"agirlik": 35, "tekrar": 5}
+      ],
+      "Dumbbell Shoulder Press": [
+        {"agirlik": 7.5, "tekrar": 10},
+        {"agirlik": 10, "tekrar": 10},
+        {"agirlik": 15, "tekrar": 8}
+      ],
+      "Dumbbell Alternate Curl": [
+        {"agirlik": 5, "tekrar": 15},
+        {"agirlik": 10, "tekrar": 10},
+        {"agirlik": 15, "tekrar": 4}
+      ],
+      "Barbell Curl": [
+        {"agirlik": 25, "tekrar": 10},
+        {"agirlik": 35, "tekrar": 10},
+        {"agirlik": 45, "tekrar": 4}
+      ],
+      "Hammer Curl": [
+        {"agirlik": 5, "tekrar": 11},
+        {"agirlik": 5, "tekrar": 10},
+        {"agirlik": 5, "tekrar": 9}
+      ],
+      "Bilek (Z Bar)": [
+        {"agirlik": 10, "tekrar": 15},
+        {"agirlik": 15, "tekrar": 15},
+        {"agirlik": 20, "tekrar": 12}
+      ]
+    }
+  },
+  "2025-06-19": {
+    "Perşembe": {
+      "Chest Machine Press": [
+        {"agirlik": 18, "tekrar": 10},
+        {"agirlik": 39, "tekrar": 10},
+        {"agirlik": 59, "tekrar": 8},
+        {"agirlik": 45, "tekrar": 12}
+      ],
+      "Incline Dumbbell Press": [
+        {"agirlik": 10, "tekrar": 10},
+        {"agirlik": 12.5, "tekrar": 10},
+        {"agirlik": 17.5, "tekrar": 10},
+        {"agirlik": 22.5, "tekrar": 5}
+      ],
+      "Dumbbell Fly": [
+        {"agirlik": 7.5, "tekrar": 12},
+        {"agirlik": 7.5, "tekrar": 10},
+        {"agirlik": 7.5, "tekrar": 11}
+      ],
+      "Cable Crossover (Üstten)": [
+        {"agirlik": 14, "tekrar": 10},
+        {"agirlik": 18, "tekrar": 10},
+        {"agirlik": 23, "tekrar": 6}
+      ],
+      "Rope Pushdown": [
+        {"agirlik": 23, "tekrar": 10},
+        {"agirlik": 27, "tekrar": 7},
+        {"agirlik": 32, "tekrar": 7}
+      ],
+      "Overhead Dumbbell Extension": [
+        {"agirlik": 15, "tekrar": 10},
+        {"agirlik": 17.5, "tekrar": 19},
+        {"agirlik": 22.5, "tekrar": 4}
+      ],
+      "V Bar Pushdown": [
+        {"agirlik": 23, "tekrar": 10},
+        {"agirlik": 32, "tekrar": 6},
+        {"agirlik": 36, "tekrar": 5}
+      ]
+    }
+  },
+  "2025-06-21": {
+    "Cumartesi": {
+      "V Bar Pulldown": [
+        {"agirlik": 32, "tekrar": 10},
+        {"agirlik": 45, "tekrar": 10},
+        {"agirlik": 59, "tekrar": 4},
+        {"agirlik": 39, "tekrar": 8}
+      ],
+      "Hammer Strength Low Row": [
+        {"agirlik": 25, "tekrar": 10},
+        {"agirlik": 45, "tekrar": 10},
+        {"agirlik": 66, "tekrar": 5},
+        {"agirlik": 52, "tekrar": 10}
+      ],
+      "Front Pulldown": [
+        {"agirlik": 25, "tekrar": 10},
+        {"agirlik": 39, "tekrar": 10},
+        {"agirlik": 52, "tekrar": 2},
+        {"agirlik": 32, "tekrar": 10}
+      ],
+      "Dumbbell Alternate Curl": [
+        {"agirlik": 5, "tekrar": 10},
+        {"agirlik": 7.5, "tekrar": 10},
+        {"agirlik": 12.5, "tekrar": 6}
+      ],
+      "Barbell Curl": [
+        {"agirlik": 25, "tekrar": 10},
+        {"agirlik": 35, "tekrar": 7},
+        {"agirlik": 45, "tekrar": 5}
+      ],
+      "Hammer Curl": [
+        {"agirlik": 7.5, "tekrar": 7},
+        {"agirlik": 5, "tekrar": 11},
+        {"agirlik": 5, "tekrar": 10}
+      ]
+    }
+  },
+  "2025-06-22": {
+    "Pazar": {
+      "Dumbbell Lateral Raise": [
+        {"agirlik": 5, "tekrar": 11},
+        {"agirlik": 5, "tekrar": 10},
+        {"agirlik": 5, "tekrar": 7}
+      ],
+      "Rope Pulldown": [
+        {"agirlik": 25, "tekrar": 9},
+        {"agirlik": 25, "tekrar": 7},
+        {"agirlik": 25, "tekrar": 7}
+      ],
+      "Shrug": [
+        {"agirlik": 20, "tekrar": 12},
+        {"agirlik": 20, "tekrar": 12},
+        {"agirlik": 20, "tekrar": 12}
+      ],
+      "Overhead Triceps Press": [
+        {"agirlik": 10, "tekrar": 10},
+        {"agirlik": 15, "tekrar": 10},
+        {"agirlik": 22.5, "tekrar": 8}
+      ],
+      "Rope Pushdown": [
+        {"agirlik": 20, "tekrar": 10},
+        {"agirlik": 25, "tekrar": 6},
+        {"agirlik": 30, "tekrar": 8}
+      ],
+      "Düz Bar Pushdown": [
+        {"agirlik": 30, "tekrar": 10},
+        {"agirlik": 40, "tekrar": 7},
+        {"agirlik": 45, "tekrar": 6}
+      ],
+      "Bilek (Z Bar)": [
+        {"agirlik": 30, "tekrar": 10},
+        {"agirlik": 30, "tekrar": 10},
+        {"agirlik": 30, "tekrar": 8}
+      ]
+    }
+  }
+}
