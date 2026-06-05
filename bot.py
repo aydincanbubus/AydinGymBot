@@ -78,7 +78,7 @@ PROGRAM = {
 }
 
 TRAINING_DAYS = {"Salı": 1, "Perşembe": 3, "Cumartesi": 5, "Pazar": 6}  # weekday() values
-CHOOSE_DAY, CHOOSE_EXERCISE, ENTER_SETS, CHATBOT, ENTER_WEIGHT = range(5)
+CHOOSE_DAY, CHOOSE_EXERCISE, ENTER_SET, CHATBOT, ENTER_WEIGHT = range(5)
 
 # ─── VERİ ─────────────────────────────────────────────────────────────────────
 def load_data():
@@ -680,48 +680,75 @@ async def goster_egzersizler(query_or_msg, context, gun):
 async def egzersiz_sec(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    
+
     if query.data == "ex_done":
         return await gunu_bitir(update, context)
-    
+
     ex_idx = int(query.data.replace("ex_", ""))
     gun = context.user_data['gun']
     ex_name = PROGRAM[gun]['exercises'][ex_idx]
     context.user_data['exercise'] = ex_name
-    
-    # Show previous data if exists
+    context.user_data['current_sets'] = []
+
     history = get_exercise_history(ex_name)
     prev_text = ""
     if history:
         last = history[-1]
         sets_str = " | ".join([f"{s['agirlik']}x{s['tekrar']}" for s in last['sets']])
         prev_text = f"\n📋 Son kayıt ({last['date'].strftime('%d/%m')}): {sets_str}"
-    
+
     await query.edit_message_text(
         f"💪 *{ex_name}*{prev_text}\n\n"
-        f"Set verilerini gir: `ağırlık x tekrar` boşlukla ayır\n"
-        f"Örnek: `50x10 60x8 70x5`",
+        f"*1. Set* — Ağırlık ve tekrarı gir:\n"
+        f"Örnek: `50x10`\n\n"
+        f"Hareketi bitirmek için /bitti\\_hareket yaz.",
         parse_mode="Markdown"
     )
-    return ENTER_SETS
+    return ENTER_SET
 
 async def set_gir(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     gun = context.user_data['gun']
     ex_name = context.user_data['exercise']
-    
-    sets = []
+    current_sets = context.user_data.get('current_sets', [])
+
+    # Parse single set: "50x10"
     try:
-        for part in text.split():
-            if 'x' in part.lower():
-                w, r = part.lower().split('x')
-                sets.append({"agirlik": float(w), "tekrar": int(r)})
-        if not sets:
+        if 'x' not in text.lower():
             raise ValueError()
+        w, r = text.lower().split('x')
+        new_set = {"agirlik": float(w.strip()), "tekrar": int(r.strip())}
     except:
-        await update.message.reply_text("⚠️ Format: `50x10 60x8 70x5`", parse_mode="Markdown")
-        return ENTER_SETS
-    
+        await update.message.reply_text("⚠️ Format: `50x10` (ağırlık x tekrar)", parse_mode="Markdown")
+        return ENTER_SET
+
+    current_sets.append(new_set)
+    context.user_data['current_sets'] = current_sets
+    set_no = len(current_sets)
+
+    # Show sets so far
+    sets_so_far = " | ".join([f"{s['agirlik']}x{s['tekrar']}" for s in current_sets])
+    next_set_no = set_no + 1
+
+    await update.message.reply_text(
+        f"✅ *{set_no}. Set kaydedildi:* {new_set['agirlik']}kg x {new_set['tekrar']} tekrar\n"
+        f"📊 Şu ana kadar: {sets_so_far}\n\n"
+        f"*{next_set_no}. Set* — Ağırlık ve tekrarı gir:\n"
+        f"Örnek: `60x8`\n\n"
+        f"Hareketi bitirmek için /bitti\\_hareket yaz.",
+        parse_mode="Markdown"
+    )
+    return ENTER_SET
+
+async def bitti_hareket(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    gun = context.user_data.get('gun')
+    ex_name = context.user_data.get('exercise')
+    sets = context.user_data.get('current_sets', [])
+
+    if not sets:
+        await update.message.reply_text("⚠️ Hiç set girmedin, önce en az 1 set gir.")
+        return ENTER_SET
+
     data = load_data()
     today = get_today_str()
     if today not in data:
@@ -730,31 +757,31 @@ async def set_gir(update: Update, context: ContextTypes.DEFAULT_TYPE):
         data[today][gun] = {}
     data[today][gun][ex_name] = sets
     save_data(data)
-    
+
     max_w = max(s['agirlik'] for s in sets)
     total_vol = sum(s['agirlik'] * s['tekrar'] for s in sets)
     best_1rm = max(calc_1rm(s['agirlik'], s['tekrar']) for s in sets)
-    
+
     # Check PR
     history = get_exercise_history(ex_name)
     pr_text = ""
     if len(history) >= 2:
         prev_max = max(h['max_weight'] for h in history[:-1])
         if max_w > prev_max:
-            pr_text = f"\n🏆 *YENİ REK OR! {prev_max}kg → {max_w}kg* 🎉"
-    
+            pr_text = f"\n🏆 *YENİ REKOR! {prev_max}kg → {max_w}kg* 🎉"
+
     sets_text = " | ".join([f"{s['agirlik']}kg x{s['tekrar']}" for s in sets])
-    
+
     exercises = PROGRAM[gun]['exercises']
     keyboard = []
     for i, ex in enumerate(exercises):
         done = "✅ " if (today in data and gun in data[today] and ex in data[today][gun]) else ""
         keyboard.append([InlineKeyboardButton(f"{done}{i+1}. {ex}", callback_data=f"ex_{i}")])
     keyboard.append([InlineKeyboardButton("🏁 Bitti, grafik göster", callback_data="ex_done")])
-    
+
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        f"✅ *{ex_name}* kaydedildi!\n"
+        f"✅ *{ex_name}* tamamlandı! ({len(sets)} set)\n"
         f"📊 {sets_text}\n"
         f"🏋️ Maks: {max_w}kg | 1RM: {best_1rm:.1f}kg | Hacim: {total_vol:.0f}kg"
         f"{pr_text}\n\nBaşka hareket?",
@@ -895,7 +922,10 @@ def main():
         states={
             CHOOSE_DAY: [CallbackQueryHandler(gun_sec, pattern="^gun_")],
             CHOOSE_EXERCISE: [CallbackQueryHandler(egzersiz_sec, pattern="^ex_")],
-            ENTER_SETS: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_gir)],
+            ENTER_SET: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, set_gir),
+                CommandHandler("bitti_hareket", bitti_hareket),
+            ],
         },
         fallbacks=[CommandHandler("iptal", iptal)],
     )
