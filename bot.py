@@ -22,7 +22,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "YOUR_TOKEN_HERE")
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 DATA_FILE = "data.json"
 WEIGHT_FILE = "weights.json"
 CHAT_HISTORY_FILE = "chat_history.json"
@@ -572,16 +572,15 @@ async def koc_baslat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def koc_cevap(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_msg = update.message.text
     
-    if not ANTHROPIC_API_KEY:
+    if not GEMINI_API_KEY:
         await update.message.reply_text(
-            "⚠️ AI bağlantısı için ANTHROPIC_API_KEY gerekli.\n"
+            "⚠️ AI bağlantısı için GEMINI_API_KEY gerekli.\n"
             "Railway'de bu environment variable'ı ekle."
         )
         return CHATBOT
     
     await update.message.reply_text("⏳ Düşünüyorum...")
     
-    # Load history
     history = load_chat_history()
     context_str = build_context_for_ai()
     
@@ -596,27 +595,27 @@ async def koc_cevap(update: Update, context: ContextTypes.DEFAULT_TYPE):
 - Eğer bir harekette durağanlık varsa beslenme (özellikle protein) ve antrenman düzeni öner
 - 1RM hesaplamalarını kullan
 - Uzun cevaplar verme, net ve actionable ol"""
-    
-    messages = history + [{"role": "user", "content": user_msg}]
-    
+
+    # Build Gemini contents (system + history + new message)
+    contents = []
+    for msg in history:
+        role = "user" if msg["role"] == "user" else "model"
+        contents.append({"role": role, "parts": [{"text": msg["content"]}]})
+    contents.append({"role": "user", "parts": [{"text": user_msg}]})
+
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": ANTHROPIC_API_KEY,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json"
-                },
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}",
+                headers={"Content-Type": "application/json"},
                 json={
-                    "model": "claude-sonnet-4-20250514",
-                    "max_tokens": 1000,
-                    "system": system_prompt,
-                    "messages": messages
+                    "system_instruction": {"parts": [{"text": system_prompt}]},
+                    "contents": contents,
+                    "generationConfig": {"maxOutputTokens": 1000}
                 }
             )
             result = resp.json()
-            ai_reply = result["content"][0]["text"]
+            ai_reply = result["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
         logger.error(f"AI error: {e}")
         ai_reply = "⚠️ Bağlantı hatası, tekrar dene."
