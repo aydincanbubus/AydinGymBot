@@ -79,6 +79,46 @@ PROGRAM = {
 
 TRAINING_DAYS = {"Salı": 1, "Perşembe": 3, "Cumartesi": 5, "Pazar": 6}  # weekday() values
 CHOOSE_DAY, CHOOSE_EXERCISE, ENTER_SET, CHATBOT, ENTER_WEIGHT = range(5)
+ENTER_HEIGHT, ENTER_NECK, ENTER_WAIST = range(5, 8)
+
+PROFILE_FILE = "profile.json"
+
+def load_profile():
+    if os.path.exists(PROFILE_FILE):
+        with open(PROFILE_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def save_profile(p):
+    with open(PROFILE_FILE, "w", encoding="utf-8") as f:
+        json.dump(p, f, ensure_ascii=False, indent=2)
+
+def calc_body_fat_navy(weight_kg, height_cm, neck_cm, waist_cm):
+    """US Navy body fat formula for males"""
+    import math
+    height_in = height_cm / 2.54
+    neck_in = neck_cm / 2.54
+    waist_in = waist_cm / 2.54
+    bf = 86.010 * math.log10(waist_in - neck_in) - 70.041 * math.log10(height_in) + 36.76
+    return round(bf, 1)
+
+def calc_bmi(weight_kg, height_cm):
+    h = height_cm / 100
+    return round(weight_kg / (h * h), 1)
+
+def bmi_category(bmi):
+    if bmi < 18.5: return "Zayıf"
+    elif bmi < 25: return "Normal"
+    elif bmi < 30: return "Fazla kilolu"
+    elif bmi < 35: return "Obez (Sınıf 1)"
+    elif bmi < 40: return "Obez (Sınıf 2)"
+    else: return "Morbid obez"
+
+def ideal_weight_range(height_cm):
+    h = height_cm / 100
+    low = round(18.5 * h * h, 1)
+    high = round(24.9 * h * h, 1)
+    return low, high
 
 # ─── VERİ ─────────────────────────────────────────────────────────────────────
 def load_data():
@@ -558,7 +598,186 @@ def generate_weight_chart(weights):
     plt.close()
     return buf
 
-# ─── KOÇ / CHATBOT ───────────────────────────────────────────────────────────
+# ─── YAĞ ORANI & BMI ─────────────────────────────────────────────────────────
+async def vucut_analiz_baslat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    profile = load_profile()
+    if profile.get('height_cm'):
+        await update.message.reply_text(
+            f"📏 Kayıtlı boyun: *{profile['height_cm']}cm*\n"
+            f"Boyunu değiştirmek için yeni değer gir, aynı kalması için /atla yaz:",
+            parse_mode="Markdown"
+        )
+    else:
+        await update.message.reply_text(
+            "📏 *Vücut Analizi*\n\nBoyunu gir (cm):\nÖrnek: `178`",
+            parse_mode="Markdown"
+        )
+    return ENTER_HEIGHT
+
+async def boy_gir(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.text.strip().lower() == '/atla':
+        profile = load_profile()
+        context.user_data['height_cm'] = profile.get('height_cm', 175)
+    else:
+        try:
+            h = float(update.message.text.replace(',', '.'))
+            if not (100 < h < 250):
+                raise ValueError()
+            context.user_data['height_cm'] = h
+            profile = load_profile()
+            profile['height_cm'] = h
+            save_profile(profile)
+        except:
+            await update.message.reply_text("⚠️ Geçerli bir boy gir (cm), örnek: `178`", parse_mode="Markdown")
+            return ENTER_HEIGHT
+
+    await update.message.reply_text(
+        "📏 Boyun çevresini gir (cm) — çenenin hemen altından ölç:\nÖrnek: `38`",
+        parse_mode="Markdown"
+    )
+    return ENTER_NECK
+
+async def boyun_gir(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        n = float(update.message.text.replace(',', '.'))
+        if not (20 < n < 70):
+            raise ValueError()
+        context.user_data['neck_cm'] = n
+    except:
+        await update.message.reply_text("⚠️ Geçerli bir değer gir, örnek: `38`", parse_mode="Markdown")
+        return ENTER_NECK
+
+    await update.message.reply_text(
+        "📏 Bel çevresini gir (cm) — göbek deliği hizasından ölç:\nÖrnek: `92`",
+        parse_mode="Markdown"
+    )
+    return ENTER_WAIST
+
+async def bel_gir(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        w = float(update.message.text.replace(',', '.'))
+        if not (40 < w < 200):
+            raise ValueError()
+    except:
+        await update.message.reply_text("⚠️ Geçerli bir değer gir, örnek: `92`", parse_mode="Markdown")
+        return ENTER_WAIST
+
+    height = context.user_data['height_cm']
+    neck = context.user_data['neck_cm']
+    waist = w
+
+    # Load current weight
+    weights = load_weights()
+    sorted_w = sorted(weights.items())
+    current_weight = sorted_w[-1][1] if sorted_w else None
+
+    # Calculations
+    bf = calc_body_fat_navy(current_weight or 85, height, neck, waist)
+    bmi = calc_bmi(current_weight or 85, height) if current_weight else None
+    ideal_low, ideal_high = ideal_weight_range(height)
+
+    # Save measurements
+    profile = load_profile()
+    profile['last_neck'] = neck
+    profile['last_waist'] = waist
+    measurements = profile.get('measurements', [])
+    measurements.append({
+        "date": get_today_str(),
+        "neck": neck,
+        "waist": waist,
+        "body_fat": bf,
+        "weight": current_weight
+    })
+    profile['measurements'] = measurements
+    save_profile(profile)
+
+    # Body fat category
+    if bf < 6: bf_cat = "Esansiyel yağ (çok düşük)"
+    elif bf < 14: bf_cat = "Sporcu"
+    elif bf < 18: bf_cat = "Fit"
+    elif bf < 25: bf_cat = "Normal"
+    elif bf < 32: bf_cat = "Fazla"
+    else: bf_cat = "Obez"
+
+    msg = f"📊 *Vücut Analizi Sonuçları*\n\n"
+    msg += f"📏 Boy: {height}cm | Boyun: {neck}cm | Bel: {waist}cm\n\n"
+    msg += f"🔥 *Yağ Oranı: %{bf}* — {bf_cat}\n"
+
+    if current_weight:
+        fat_kg = round(current_weight * bf / 100, 1)
+        lean_kg = round(current_weight - fat_kg, 1)
+        msg += f"   Yağ kütlesi: {fat_kg}kg | Yağsız kütle: {lean_kg}kg\n\n"
+        if bmi:
+            msg += f"⚖️ *BMI: {bmi}* — {bmi_category(bmi)}\n"
+            msg += f"   İdeal kilo aralığı: {ideal_low}–{ideal_high}kg\n"
+            diff = round(current_weight - ideal_high, 1)
+            if diff > 0:
+                msg += f"   İdeal aralığa ulaşmak için: -{diff}kg\n"
+            else:
+                msg += f"   ✅ İdeal kilo aralığındasın!\n"
+    else:
+        msg += f"\n⚠️ Kilo kaydın yok, /kilo ile ekle (daha doğru sonuç için)\n"
+
+    if len(measurements) >= 2:
+        prev = measurements[-2]
+        bf_diff = round(bf - prev['body_fat'], 1)
+        waist_diff = round(waist - prev['waist'], 1)
+        sign_bf = "+" if bf_diff > 0 else ""
+        sign_w = "+" if waist_diff > 0 else ""
+        msg += f"\n📈 Önceki ölçüme göre:\n"
+        msg += f"   Yağ oranı: {sign_bf}{bf_diff}% | Bel: {sign_w}{waist_diff}cm"
+
+    await update.message.reply_text(msg, parse_mode="Markdown")
+
+    # Send chart if enough data
+    if len(measurements) >= 2:
+        buf = generate_bodyfat_chart(measurements)
+        if buf:
+            await update.message.reply_photo(photo=buf, caption="📈 Yağ Oranı & Bel Çevresi Takibi")
+
+    return ConversationHandler.END
+
+def generate_bodyfat_chart(measurements):
+    if len(measurements) < 2:
+        return None
+
+    dates = [datetime.strptime(m['date'], "%Y-%m-%d") for m in measurements]
+    bfs = [m['body_fat'] for m in measurements]
+    waists = [m['waist'] for m in measurements]
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
+    fig.patch.set_facecolor('#1a1a2e')
+
+    for ax, vals, color, title, ylabel in [
+        (ax1, bfs, '#ff6b6b', '🔥 Yağ Oranı (%)', '%'),
+        (ax2, waists, '#4ecdc4', '📏 Bel Çevresi (cm)', 'cm'),
+    ]:
+        ax.plot(dates, vals, 'o-', color=color, linewidth=2.5, markersize=8, markerfacecolor='white')
+        ax.fill_between(dates, vals, alpha=0.15, color=color)
+        ax.set_facecolor('#16213e')
+        ax.set_title(title, color='white', fontsize=13, fontweight='bold')
+        ax.set_ylabel(ylabel, color='white')
+        ax.tick_params(colors='white')
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m'))
+        plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, color='#aaaaaa')
+        for sp in ['top', 'right']:
+            ax.spines[sp].set_visible(False)
+        for sp in ['bottom', 'left']:
+            ax.spines[sp].set_color('#444')
+        if len(dates) >= 3:
+            x_num = mdates.date2num(dates)
+            z = np.polyfit(x_num, vals, 1)
+            p = np.poly1d(z)
+            ax.plot(dates, p(x_num), '--', color='white', linewidth=1, alpha=0.4, label='Trend')
+            ax.legend(facecolor='#16213e', edgecolor='#444', labelcolor='white', fontsize=8)
+
+    fig.suptitle('Vücut Kompozisyonu Takibi', color='white', fontsize=14, fontweight='bold')
+    plt.tight_layout()
+    buf = BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
+    buf.seek(0)
+    plt.close()
+    return buf
 async def koc_baslat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🤖 *Koç modu aktif!*\n\n"
@@ -848,12 +1067,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         "🏆 *Gym Tracker Bot'una hoş geldin!*\n\n"
         "📋 *Komutlar:*\n"
-        "/antrenman — Antrenman ver gir\n"
+        "/antrenman — Antrenman verisi gir\n"
         "/grafik — Hareket güç grafikleri\n"
         "/ozet — Haftalık özet\n"
         "/kilo — Vücut ağırlığı gir\n"
+        "/vucut — Yağ oranı & BMI hesabı\n"
         "/koc — AI koçunla konuş\n"
-        "/program — Haftalık program\n"
+        "/program — Haftalık programı gör\n"
         "/hatirlatici — Hatırlatıcıyı kur\n\n"
         "⏰ Hatırlatıcı otomatik kuruldu (saat 12:00)\n"
         "📊 Haftalık rapor her Pazar 20:00'de gelecek"
@@ -942,6 +1162,17 @@ def main():
         fallbacks=[CommandHandler("iptal", iptal)],
     )
     
+    vucut_conv = ConversationHandler(
+        entry_points=[CommandHandler("vucut", vucut_analiz_baslat)],
+        states={
+            ENTER_HEIGHT: [MessageHandler(filters.TEXT & ~filters.COMMAND, boy_gir),
+                           CommandHandler("atla", boy_gir)],
+            ENTER_NECK: [MessageHandler(filters.TEXT & ~filters.COMMAND, boyun_gir)],
+            ENTER_WAIST: [MessageHandler(filters.TEXT & ~filters.COMMAND, bel_gir)],
+        },
+        fallbacks=[CommandHandler("iptal", iptal)],
+    )
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("program", program_goster))
     app.add_handler(CommandHandler("ozet", ozet_goster))
@@ -952,6 +1183,7 @@ def main():
     app.add_handler(antrenman_conv)
     app.add_handler(koc_conv)
     app.add_handler(kilo_conv)
+    app.add_handler(vucut_conv)
     
     logger.info("Bot başlatıldı!")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
